@@ -18,6 +18,7 @@ class TesseractOCR:
         """
         self.config = config or {}
         self.lang = self.config.get('psm', 6)
+        self.psm = self.config.get('psm', 6)
         self.oem = self.config.get('oem', 3)
 
     def extract_text(self, image: np.ndarray) -> str:
