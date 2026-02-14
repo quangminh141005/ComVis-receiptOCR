@@ -71,4 +71,10 @@ class ReceiptOCRPipeline:
             # Them method preprocessing o day nha
         
         return processed
-
+    
+    def _save_intermediate(self, original_path: str, processed_image: np.ndarray):
+        """Luu anh sau khi preprocessing"""
+        import os
+        filename = os.path.basename(original_path)
+        output_path = f"data/processed/{filename}"
+        cv2.imwrite(output_path, processed_image)
