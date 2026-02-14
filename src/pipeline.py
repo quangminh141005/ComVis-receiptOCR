@@ -66,7 +66,7 @@ class ReceiptOCRPipeline:
         for step in self.config['preprocessing_steps']:
             if step == 'grayscale':
                 processed = convert_to_grayscale(processed)
-            elif step = 'otsu':
+            elif step == 'otsu':
                 processed = apply_otsu_threshold(processed)
             # Them method preprocessing o day nha
         
