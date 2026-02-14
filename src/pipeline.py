@@ -19,7 +19,7 @@ class ReceiptOCRPipeline:
                    - preprocessing_steps: list of preprocessing methods
                    - ocr_config: OCR engine configuration
         """
-        self.config = config._default_config()
+        self.config = config or self._default_config()
         self.ocr_engine = TesseractOCR(self.config.get('ocr_config', {}))
 
     def _default_config(self) -> Dict:
@@ -76,5 +76,15 @@ class ReceiptOCRPipeline:
         """Luu anh sau khi preprocessing"""
         import os
         filename = os.path.basename(original_path)
-        output_path = f"data/processed/{filename}"
+
+        output_dir = "data/processed"
+
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            print(f"create dir {output_dir}")
+        
+        
+        output_path = os.path.join(output_dir, filename)
+
         cv2.imwrite(output_path, processed_image)
+        print(f"save image in {output_path}")
