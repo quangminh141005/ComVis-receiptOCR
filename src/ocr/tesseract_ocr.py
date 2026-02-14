@@ -17,7 +17,7 @@ class TesseractOCR:
                    - oem: OCR Engine mode (default: 3)
         """
         self.config = config or {}
-        self.lang = self.config.get('psm', 6)
+        self.lang = self.config.get('lang', 'eng')
         self.psm = self.config.get('psm', 6)
         self.oem = self.config.get('oem', 3)
 

@@ -1,2 +1,5 @@
 data/SROIE2019/*
 !data/SROIE2019/.gitkeep
+
+#python
+__pycache__/
