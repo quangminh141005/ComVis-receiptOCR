@@ -1,7 +1,8 @@
 import cv2
+import numpy as np
 
 def convert_to_optimize_resolution(image: np.ndarray, target_width=1000) -> np.ndarray:
-    original_height, original_width = img.shape[:2] 
+    original_height, original_width = image.shape[:2] 
 
     lower_bound = target_width * 0.9
     upper_bound = target_width * 1.1
