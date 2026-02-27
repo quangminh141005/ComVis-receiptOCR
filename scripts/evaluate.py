@@ -65,9 +65,9 @@ def evaluate_folder(folder_path: str):
         # running cer
         running_cer = total_distance /total_chars
 
-        if total_samples % 100 == 0:
-            print(f"\nProcessed {total_samples} images")
-            print(f"Current running CER: {running_cer:.4f}")
+        # if total_samples % 100 == 0:
+        #     print(f"\nProcessed {total_samples} images")
+        #     print(f"Current running CER: {running_cer:.4f}")
 
 
     total_time = time.time() - start_time
@@ -75,9 +75,9 @@ def evaluate_folder(folder_path: str):
 
     print("\nFINAL RESULT")
     print(f"Total samples: {total_samples}")
-    print(f"Dataset CER: {dataset_cer}")
+    print(f"Dataset CER: {dataset_cer:.4f}")
     print(f"Dataset Accuracy (1-CER): {1 - dataset_cer:.4f}")
     print(f"Total time: {total_time}")
 
 if __name__ == "__main__":
-    evaluate_folder("data/SROIE2019/0325updated.task1train(626p)")
+    evaluate_folder("data/SROIE2019/task1train")
