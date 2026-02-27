@@ -33,12 +33,17 @@ def evaluate_folder(folder_path: str):
 
     start_time = time.time()
 
+    image_files = [
+        f for f in os.listdir(folder_path)
+        if f.lower().endswith((".jpg", ".jpeg", ".png"))
+    ]
+
     for file in tqdm(image_files, desc="evaluating", unit="images"):
 
         image_path = os.path.join(folder_path, file)
         gt_path = os.path.join(folder_path, file.replace(".jpg", ".txt"))
 
-        if not os.path.exist(gt_path):
+        if not os.path.exists(gt_path):
             print(f"Missing GT for {file}")
             continue
 
@@ -75,4 +80,4 @@ def evaluate_folder(folder_path: str):
     print(f"Total time: {total_time}")
 
 if __name__ == "__main__":
-    evaluate_folder("")
+    evaluate_folder("data/SROIE2019/0325updated.task1train(626p)")
