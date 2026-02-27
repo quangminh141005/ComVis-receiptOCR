@@ -7,6 +7,7 @@ import numpy as np
 from typing import Dict, Optional
 from src.preprocessing.grayscale import convert_to_grayscale
 from src.preprocessing.thresholding import apply_otsu_threshold
+from src.preprocessing.resolution_optimize import convert_to_optimize_resolution
 from src.ocr.tesseract_ocr import TesseractOCR
 
 class ReceiptOCRPipeline:
@@ -24,7 +25,7 @@ class ReceiptOCRPipeline:
 
     def _default_config(self) -> Dict:
         return {
-            'preprocessing_steps': ['grayscale', 'otsu'],
+            'preprocessing_steps': ['resolution'],
             'ocr_config': {
                 'lang': 'eng',
                 'psm': 6 # page segmentation mode (6 la segment thanh tung block)
@@ -63,12 +64,14 @@ class ReceiptOCRPipeline:
         """
         processed = image.copy()
 
-        for step in self.config['preprocessing_steps']:
+        # Them method preprocessing o day nha
+        for step in self.config['preprocessing_steps']: 
             if step == 'grayscale':
                 processed = convert_to_grayscale(processed)
             elif step == 'otsu':
                 processed = apply_otsu_threshold(processed)
-            # Them method preprocessing o day nha
+            elif step == 'resolution': # resolution optimization 
+                processed = convert_to_optimize_resolution(processed)
         
         return processed
     
