@@ -8,6 +8,9 @@ from typing import Dict, Optional
 from src.preprocessing.grayscale import convert_to_grayscale
 from src.preprocessing.thresholding import apply_otsu_threshold
 from src.preprocessing.resolution_optimize import convert_to_optimize_resolution
+from src.preprocessing.constrast_CLAHE import contrast_clahe
+from src.preprocessing.denoising import denoise
+from src.preprocessing.morphology import morphological_cleanup
 from src.ocr.tesseract_ocr import TesseractOCR
 
 class ReceiptOCRPipeline:
@@ -25,7 +28,7 @@ class ReceiptOCRPipeline:
 
     def _default_config(self) -> Dict:
         return {
-            'preprocessing_steps': ['resolution'],
+            'preprocessing_steps': ['grayscale', 'contrast', 'otsu'],
             'ocr_config': {
                 'lang': 'eng',
                 'psm': 6 # page segmentation mode (6 la segment thanh tung block)
@@ -72,7 +75,13 @@ class ReceiptOCRPipeline:
                 processed = apply_otsu_threshold(processed)
             elif step == 'resolution': # resolution optimization 
                 processed = convert_to_optimize_resolution(processed)
-        
+            elif step == 'contrast': # CLAHE contrast enhancement (must use after grayscale)
+                processed == contrast_clahe(processed)
+            elif step == 'denoise': # must use in grayscale
+                processed == denoise(processed)
+            elif step == 'morphology':
+                processed == morphological_cleanup(processed)
+
         return processed
     
     def _save_intermediate(self, original_path: str, processed_image: np.ndarray):
