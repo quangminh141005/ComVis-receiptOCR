@@ -4,7 +4,7 @@ Script de chay full pipe line (preprocessing + ocr)
 
 import argparse
 import os
-from src.pipeline import ReceiptOCRPipeline
+from preprocessing.pipeline import ReceiptOCRPipeline
 
 def main():
     parser = argparse.ArgumentParser(description='Run receipt ocr pipeline')

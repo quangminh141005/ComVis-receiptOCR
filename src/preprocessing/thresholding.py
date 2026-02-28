@@ -1,22 +1,48 @@
 """
-chuyen anh thanh trang/den (binarization)
+thresholding.py
+---------------
+Binarization (adaptive thresholding) step for receipt preprocessing.
 """
+
 import cv2
 import numpy as np
 
-def apply_otsu_threshold(image: np.ndarray) -> np.ndarray:
-    if len(image.shape) == 3:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    _, binary = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return binary
+# ── Config defaults ──
+DEFAULT_THRESH_BLOCK_SIZE = 31   # must be odd
+DEFAULT_THRESH_C          = 10
 
-def apply_adaptive_threhold(image: np.ndarray, block_size: int = 11, C: int = 2) -> np.ndarray:
-    if len(image.shape) == 3:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    binary = cv2.adaptiveThrehold(
-        image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, C
+def binarize(
+    gray: np.ndarray,
+    block_size: int = DEFAULT_THRESH_BLOCK_SIZE,
+    c: int          = DEFAULT_THRESH_C,
+) -> np.ndarray:
+    """
+    Apply Adaptive Gaussian Thresholding to produce a clean binary image.
+
+    Adaptive (local) thresholding is preferred over global Otsu for receipts
+    because thermal-paper images often have uneven lighting, shadows, or
+    faded regions that a single global threshold handles poorly.
+
+    Args:
+        gray       (np.ndarray): Grayscale input image.
+        block_size (int)       : Size of the local neighbourhood window
+                                 (must be an odd number ≥ 3).
+        c          (int)       : Constant subtracted from the local mean.
+                                 Higher values → thinner strokes.
+
+    Returns:
+        np.ndarray: Binary (black-and-white) image.
+    """
+    assert block_size % 2 == 1 and block_size >= 3, \
+        "block_size must be an odd integer ≥ 3"
+
+    return cv2.adaptiveThreshold(
+        gray,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        block_size,
+        c,
     )
-
-    return binary

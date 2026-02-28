@@ -1,5 +1,36 @@
-data/SROIE2019/*
-!data/SROIE2019/.gitkeep
+# Exclude all data directories and their contents
+data/SROIE2019/
+data/0325updated.task1train\(626p\)/
+data/preprocessed/
+data/preprocessed_10test/
+data/processed/
+data/results/
 
-#python
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Results/evaluation files
+results.json
+*.json
