@@ -5,8 +5,11 @@ from typing import Dict, Optional
 
 # Assuming your imports work perfectly:
 from src.preprocessing.grayscale import convert_to_grayscale
-from src.preprocessing.thresholding import apply_otsu_threshold
+from src.preprocessing.thresholding import apply_otsu_threshold, apply_adaptive_threhold
 from src.preprocessing.resolution_optimize import convert_to_optimize_resolution
+from src.preprocessing.constrast_CLAHE import contrast_clahe
+from src.preprocessing.denoising import denoise
+from src.preprocessing.morphology import morphological_cleanup
 
 class TestingPipeline:
     def __init__(self, output_dir: str = "pipeline_tests", config: Optional[Dict] = None):
@@ -19,7 +22,7 @@ class TestingPipeline:
     
     def _default_config(self) -> Dict:
         return {
-            'preprocessing_steps': ['resolution', 'grayscale', 'otsu'],
+            'preprocessing_steps': ['resolution', 'grayscale','otsu', 'morphology'],
         }
 
     def process_image(self, image_path: str) -> np.ndarray:
@@ -40,14 +43,22 @@ class TestingPipeline:
         for i, step in enumerate(self.config['preprocessing_steps'], start=1):
             if step == 'grayscale':
                 processed = convert_to_grayscale(processed)
-            elif step == 'otsu':
+            elif step == 'otsu_threshold':
                 processed = apply_otsu_threshold(processed)
+            elif step == 'adaptive_threshold':
+                processed = apply_adaptive_threhold(processed)
             elif step == 'resolution':
                 processed = convert_to_optimize_resolution(processed)
+            elif step == 'contrast': # CLAHE contrast enhancement (must use after grayscale)
+                processed = contrast_clahe(processed)
+            elif step == 'denoise': # must use in grayscale
+                processed = denoise(processed)
+            elif step == 'morphology': # must use after binarization
+                processed = morphological_cleanup(processed)
             else:
                 print(f"Warning: Unknown step '{step}' skipped.")
                 continue
-            
+
             step_filename = f"{base_name}_{i}_{step}.jpg"
             save_path = os.path.join(self.output_dir, step_filename)
             cv2.imwrite(save_path, processed)
@@ -59,7 +70,7 @@ class TestingPipeline:
 if __name__ == "__main__":
     # You can customize the sequence by passing a config dictionary
     custom_config = {
-        'preprocessing_steps': ['resolution'] 
+        'preprocessing_steps': ['resolution','grayscale', 'denoise', 'contrast', 'adaptive_threshold', 'morphology'] 
     }
     
     # Initialize the pipeline

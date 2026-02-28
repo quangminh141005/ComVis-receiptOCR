@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from typing import Dict, Optional
 from src.preprocessing.grayscale import convert_to_grayscale
-from src.preprocessing.thresholding import apply_otsu_threshold
+from src.preprocessing.thresholding import apply_otsu_threshold, apply_adaptive_threhold
 from src.preprocessing.resolution_optimize import convert_to_optimize_resolution
 from src.preprocessing.constrast_CLAHE import contrast_clahe
 from src.preprocessing.denoising import denoise
@@ -28,7 +28,7 @@ class ReceiptOCRPipeline:
 
     def _default_config(self) -> Dict:
         return {
-            'preprocessing_steps': ['grayscale', 'contrast', 'otsu'],
+            'preprocessing_steps': ['resolution','grayscale', 'denoise', 'contrast', 'adaptive_threshold', 'morphology'],
             'ocr_config': {
                 'lang': 'eng',
                 'psm': 6 # page segmentation mode (6 la segment thanh tung block)
@@ -71,15 +71,17 @@ class ReceiptOCRPipeline:
         for step in self.config['preprocessing_steps']: 
             if step == 'grayscale':
                 processed = convert_to_grayscale(processed)
-            elif step == 'otsu':
+            elif step == 'otsu_threshold':
                 processed = apply_otsu_threshold(processed)
+            elif step == 'adative_threshold':
+                processed = apply_adaptive_threhold(processed)
             elif step == 'resolution': # resolution optimization 
                 processed = convert_to_optimize_resolution(processed)
             elif step == 'contrast': # CLAHE contrast enhancement (must use after grayscale)
                 processed == contrast_clahe(processed)
             elif step == 'denoise': # must use in grayscale
                 processed == denoise(processed)
-            elif step == 'morphology':
+            elif step == 'morphology': # must use after binarization
                 processed == morphological_cleanup(processed)
 
         return processed
