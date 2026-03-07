@@ -19,7 +19,7 @@ def apply_adaptive_threshold(image: np.ndarray, block_size: int = 31, C: int = 1
         image,
         255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV,
+        cv2.THRESH_BINARY,
         block_size,
         C
     )
