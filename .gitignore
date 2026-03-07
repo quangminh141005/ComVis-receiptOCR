@@ -5,6 +5,7 @@ data/preprocessed/
 data/preprocessed_10test/
 data/processed/
 data/results/
+data/preprocessed_variants
 
 # Virtual environment
 venv/
