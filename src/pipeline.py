@@ -6,11 +6,12 @@ import cv2
 import numpy as np
 from typing import Dict, Optional
 from src.preprocessing.grayscale import convert_to_grayscale
-from src.preprocessing.thresholding import apply_otsu_threshold, apply_adaptive_threhold
+from src.preprocessing.thresholding import apply_otsu_threshold, apply_adaptive_threshold
 from src.preprocessing.resolution_optimize import convert_to_optimize_resolution
 from src.preprocessing.constrast_CLAHE import contrast_clahe
 from src.preprocessing.denoising import denoise
 from src.preprocessing.morphology import morphological_cleanup
+from src.preprocessing.dilation import dilate
 from src.ocr.tesseract_ocr import TesseractOCR
 
 class ReceiptOCRPipeline:
@@ -28,7 +29,7 @@ class ReceiptOCRPipeline:
 
     def _default_config(self) -> Dict:
         return {
-            'preprocessing_steps': ['resolution','grayscale', 'denoise', 'contrast', 'adaptive_threshold', 'morphology'],
+            'preprocessing_steps': ['grayscale', 'denoise', 'contrast', 'adaptive_threshold', 'morphology'], # 'grayscale', 'denoise', 'contrast', 'adaptive_threshold', 'morphology'
             'ocr_config': {
                 'lang': 'eng',
                 'psm': 6 # page segmentation mode (6 la segment thanh tung block)
@@ -74,15 +75,17 @@ class ReceiptOCRPipeline:
             elif step == 'otsu_threshold':
                 processed = apply_otsu_threshold(processed)
             elif step == 'adative_threshold':
-                processed = apply_adaptive_threhold(processed)
+                processed = apply_adaptive_threshold(processed)
             elif step == 'resolution': # resolution optimization 
                 processed = convert_to_optimize_resolution(processed)
             elif step == 'contrast': # CLAHE contrast enhancement (must use after grayscale)
-                processed == contrast_clahe(processed)
+                processed = contrast_clahe(processed)
             elif step == 'denoise': # must use in grayscale
-                processed == denoise(processed)
+                processed = denoise(processed)
             elif step == 'morphology': # must use after binarization
-                processed == morphological_cleanup(processed)
+                processed = morphological_cleanup(processed)
+            elif step == 'dilation': # connect breaking piecies
+                processed = dilate(processed)
 
         return processed
     
