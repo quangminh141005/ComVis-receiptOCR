@@ -72,7 +72,7 @@ class ReceiptOCRPipeline:
                 processed = convert_to_grayscale(processed)
             elif step == 'otsu_threshold':
                 processed = apply_otsu_threshold(processed)
-            elif step == 'adative_threshold':
+            elif step == 'adaptive_threshold':
                 processed = apply_adaptive_threshold(processed)
             elif step == 'resolution': # resolution optimization 
                 processed = contrast_clahe(processed)
