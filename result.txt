@@ -1,0 +1,20 @@
+============================================================
+OCR PREPROCESSING COMPARISON
+============================================================
+Total images: 712
+
+CER comparison
+No preprocessing CER : 0.2172
+With preprocessing CER: 0.1919
+
+CER improvement: 0.0254
+
+Image level comparison
+Improved images : 435
+Worse images    : 248
+Same            : 21
+
+Speed
+Total time: 927.68s
+Avg time per image (2 pipelines): 1.3029s
+============================================================

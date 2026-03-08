@@ -5,11 +5,13 @@ from typing import Dict, Optional
 
 # Assuming your imports work perfectly:
 from src.preprocessing.grayscale import convert_to_grayscale
-from src.preprocessing.thresholding import apply_otsu_threshold, apply_adaptive_threhold
+from src.preprocessing.thresholding import apply_otsu_threshold, apply_adaptive_threshold
 from src.preprocessing.resolution_optimize import convert_to_optimize_resolution
 from src.preprocessing.constrast_CLAHE import contrast_clahe
 from src.preprocessing.denoising import denoise
 from src.preprocessing.morphology import morphological_cleanup
+from src.preprocessing.dilation import dilate
+from src.preprocessing.reverse_binary import flip_binary
 
 class TestingPipeline:
     def __init__(self, output_dir: str = "pipeline_tests", config: Optional[Dict] = None):
@@ -46,7 +48,7 @@ class TestingPipeline:
             elif step == 'otsu_threshold':
                 processed = apply_otsu_threshold(processed)
             elif step == 'adaptive_threshold':
-                processed = apply_adaptive_threhold(processed)
+                processed = apply_adaptive_threshold(processed)
             elif step == 'resolution':
                 processed = convert_to_optimize_resolution(processed)
             elif step == 'contrast': # CLAHE contrast enhancement (must use after grayscale)
@@ -55,6 +57,10 @@ class TestingPipeline:
                 processed = denoise(processed)
             elif step == 'morphology': # must use after binarization
                 processed = morphological_cleanup(processed)
+            elif step == 'dilation': # connect breaking piecies
+                processed = dilate(processed)
+            elif step == 'flip': # connect breaking piecies
+                processed = flip_binary(processed)
             else:
                 print(f"Warning: Unknown step '{step}' skipped.")
                 continue
@@ -70,13 +76,13 @@ class TestingPipeline:
 if __name__ == "__main__":
     # You can customize the sequence by passing a config dictionary
     custom_config = {
-        'preprocessing_steps': ['resolution','grayscale', 'denoise', 'contrast', 'adaptive_threshold', 'morphology'] 
+        'preprocessing_steps': ['grayscale', 'contrast', 'denoise', 'adaptive_threshold', 'flip', 'morphology', 'flip'] 
     }
     
     # Initialize the pipeline
     pipeline = TestingPipeline(output_dir="data/processed", config=custom_config)
     
-    test_image_path = "data/SROIE2019/task1train/X51005301661.jpg" 
+    test_image_path = "data/SROIE2019/task1train/X51008164510.jpg" 
     
     try:
         final_image = pipeline.process_image(test_image_path)

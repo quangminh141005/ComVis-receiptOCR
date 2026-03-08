@@ -12,6 +12,7 @@ from src.preprocessing.constrast_CLAHE import contrast_clahe
 from src.preprocessing.denoising import denoise
 from src.preprocessing.morphology import morphological_cleanup
 from src.preprocessing.dilation import dilate
+from src.preprocessing.reverse_binary import flip_binary
 from src.ocr.tesseract_ocr import TesseractOCR
 
 class ReceiptOCRPipeline:
@@ -86,6 +87,8 @@ class ReceiptOCRPipeline:
                 processed = morphological_cleanup(processed)
             elif step == 'dilation': # connect breaking piecies
                 processed = dilate(processed)
+            elif step == 'flip': # connect breaking piecies
+                processed = flip_binary(processed)
 
         return processed
     
