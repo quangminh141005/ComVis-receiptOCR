@@ -7,12 +7,9 @@ import numpy as np
 from typing import Dict, Optional
 from src.preprocessing.grayscale import convert_to_grayscale
 from src.preprocessing.thresholding import apply_otsu_threshold, apply_adaptive_threshold
-from src.preprocessing.resolution_optimize import convert_to_optimize_resolution
 from src.preprocessing.constrast_CLAHE import contrast_clahe
-from src.preprocessing.denoising import denoise
+from src.preprocessing.denoising import denoise_nlm, denoise_bilateral
 from src.preprocessing.morphology import morphological_cleanup
-from src.preprocessing.dilation import dilate
-from src.preprocessing.reverse_binary import flip_binary
 from src.ocr.tesseract_ocr import TesseractOCR
 
 class ReceiptOCRPipeline:
@@ -78,17 +75,13 @@ class ReceiptOCRPipeline:
             elif step == 'adative_threshold':
                 processed = apply_adaptive_threshold(processed)
             elif step == 'resolution': # resolution optimization 
-                processed = convert_to_optimize_resolution(processed)
-            elif step == 'contrast': # CLAHE contrast enhancement (must use after grayscale)
                 processed = contrast_clahe(processed)
-            elif step == 'denoise': # must use in grayscale
-                processed = denoise(processed)
+            elif step == 'denoise_nlm': # must use in grayscale
+                processed = denoise_nlm(processed)
+            elif step == 'denoise_bilateral': # must use in grayscale
+                processed = denoise_bilateral(processed)
             elif step == 'morphology': # must use after binarization
                 processed = morphological_cleanup(processed)
-            elif step == 'dilation': # connect breaking piecies
-                processed = dilate(processed)
-            elif step == 'flip': # connect breaking piecies
-                processed = flip_binary(processed)
 
         return processed
     
