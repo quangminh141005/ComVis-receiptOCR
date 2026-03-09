@@ -1,5 +1,5 @@
 import cv2
-import numy as np
+import numpy as np
 
 def sharpen(gray: np.ndarray) -> np.ndarray:
     """
