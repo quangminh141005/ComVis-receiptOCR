@@ -84,6 +84,13 @@ def is_valid_pipeline(steps):
     Filter out invalid/redundant pipeline combinations based on
     domain knowledge about OCR preprocessing.
     
+    Based on your actual pipeline.py implementation:
+    - grayscale (base, always first)
+    - denoise_nlm, denoise_bilateral (denoising)
+    - contrast (CLAHE contrast enhancement)
+    - adaptive_threshold, otsu_threshold (binarization)
+    - morphology (morphological cleanup)
+    
     Returns True if pipeline is valid, False if it should be filtered out.
     """
     
@@ -96,7 +103,7 @@ def is_valid_pipeline(steps):
         return False
     
     # Rule 3: Threshold should come BEFORE morphology (logical order)
-    # Morphology is meant to clean up after thresholding
+    # Morphology is meant to clean up AFTER binarization
     threshold_methods = ["adaptive_threshold", "otsu_threshold"]
     has_threshold = any(t in steps for t in threshold_methods)
     has_morphology = "morphology" in steps
@@ -107,52 +114,50 @@ def is_valid_pipeline(steps):
         if threshold_idx > morphology_idx:
             return False
     
-    # Rule 4: Resolution enhancement should be early in pipeline
-    # Upscaling should happen before major transformations
-    if "resolution" in steps:
-        res_idx = steps.index("resolution")
+    # Rule 4: Morphology requires threshold first (morphology needs binary image)
+    # If morphology is present but no threshold, it's invalid
+    if has_morphology and not has_threshold:
+        return False
+    
+    # Rule 5: Contrast enhancement should be early in pipeline
+    # CLAHE works best on grayscale before major transformations
+    if "contrast" in steps:
+        contrast_idx = steps.index("contrast")
         
-        # Resolution should come before threshold
+        # Contrast should come before threshold
         if has_threshold:
             threshold_idx = next(i for i, s in enumerate(steps) if s in threshold_methods)
-            if res_idx > threshold_idx:
+            if contrast_idx > threshold_idx:
                 return False
         
-        # Resolution should come before morphology
+        # Contrast should come before morphology
         if has_morphology:
             morphology_idx = steps.index("morphology")
-            if res_idx > morphology_idx:
+            if contrast_idx > morphology_idx:
                 return False
     
-    # Rule 5: Sharpening should be later in pipeline
-    # Sharpening on raw/noisy images is counterproductive
-    if "sharpening" in steps:
-        sharp_idx = steps.index("sharpening")
-        
-        # Sharpening shouldn't be in the first 2 positions
-        # (grayscale is position 0, so sharp_idx < 2 means position 1 or 2)
-        if sharp_idx < 2 and len(steps) > 3:
-            return False
-        
-        # If denoising exists, sharpening should come after it
-        denoise_methods = ["denoise_bilateral", "denoise_nlm"]
-        has_denoise = any(d in steps for d in denoise_methods)
-        if has_denoise:
-            denoise_idx = next(i for i, s in enumerate(steps) if s in denoise_methods)
-            if sharp_idx < denoise_idx:
-                return False
-    
-    # Rule 6: Denoising should come early (before threshold)
+    # Rule 6: Denoising should come early (before threshold and contrast)
     denoise_methods = ["denoise_bilateral", "denoise_nlm"]
     has_denoise = any(d in steps for d in denoise_methods)
     
-    if has_denoise and has_threshold:
+    if has_denoise:
         denoise_idx = next(i for i, s in enumerate(steps) if s in denoise_methods)
-        threshold_idx = next(i for i, s in enumerate(steps) if s in threshold_methods)
         
         # Denoise should come before threshold
-        if denoise_idx > threshold_idx:
-            return False
+        if has_threshold:
+            threshold_idx = next(i for i, s in enumerate(steps) if s in threshold_methods)
+            if denoise_idx > threshold_idx:
+                return False
+        
+        # Denoise should come before contrast (denoise raw image first)
+        if "contrast" in steps:
+            contrast_idx = steps.index("contrast")
+            if denoise_idx > contrast_idx:
+                return False
+    
+    # Rule 7: Typical optimal order guideline
+    # grayscale → denoise → contrast → threshold → morphology
+    # This is just a sanity check for really weird orderings
     
     return True
 
@@ -161,13 +166,20 @@ def is_valid_pipeline(steps):
 # Generate pipeline combinations with INTELLIGENT FILTERING
 # ============================================================
 
-def generate_pipelines(min_steps=1, max_steps=5, max_pipelines=None, use_order=True):
+def generate_pipelines(min_steps=1, max_steps=4, max_pipelines=None, use_order=True):
     """
-    Generate pipeline configurations with intelligent filtering.
+    Generate pipeline configurations based on your actual pipeline.py implementation.
+    
+    Available steps from your pipeline.py:
+    - grayscale (base, always included)
+    - denoise_nlm, denoise_bilateral
+    - contrast (CLAHE)
+    - adaptive_threshold, otsu_threshold
+    - morphology
     
     Args:
         min_steps: Minimum number of optional steps (default: 1)
-        max_steps: Maximum number of optional steps (default: 5)
+        max_steps: Maximum number of optional steps (default: 4)
         max_pipelines: Maximum total pipelines to generate (default: None = unlimited)
         use_order: If True, use permutations (order matters), else combinations
     
@@ -177,14 +189,14 @@ def generate_pipelines(min_steps=1, max_steps=5, max_pipelines=None, use_order=T
     
     base_steps = ["grayscale"]
 
+    # These are the ACTUAL steps implemented in your pipeline.py
     optional_steps = [
-        "denoise_bilateral",
-        "denoise_nlm",
-        "resolution",
-        "adaptive_threshold",
-        "otsu_threshold",
-        "morphology",
-        "sharpening"
+        "denoise_bilateral",      # Bilateral filtering denoising
+        "denoise_nlm",           # Non-local means denoising
+        "contrast",              # CLAHE contrast enhancement
+        "adaptive_threshold",    # Adaptive thresholding
+        "otsu_threshold",        # Otsu's thresholding
+        "morphology"             # Morphological cleanup (opening/closing)
     ]
 
     pipelines = {}
@@ -199,7 +211,8 @@ def generate_pipelines(min_steps=1, max_steps=5, max_pipelines=None, use_order=T
     print(f"Pipeline Generation Configuration:")
     print(f"{'='*60}")
     print(f"  Base steps: {base_steps}")
-    print(f"  Optional steps: {len(optional_steps)}")
+    print(f"  Optional steps: {optional_steps}")
+    print(f"  Total optional steps: {len(optional_steps)}")
     print(f"  Min steps: {min_steps}")
     print(f"  Max steps: {max_steps}")
     print(f"  Use order (permutations): {use_order}")
@@ -241,11 +254,89 @@ def generate_pipelines(min_steps=1, max_steps=5, max_pipelines=None, use_order=T
 
             pipeline_id += 1
 
-    print(f"\Generated {total_generated} total combinations")
+    print(f"\n✓ Generated {total_generated} total combinations")
     print(f"✓ Filtered out {filtered_count} invalid pipelines ({filtered_count/total_generated*100:.1f}%)")
     print(f"✓ Kept {len(pipelines)} valid pipelines ({len(pipelines)/total_generated*100:.1f}%)\n")
     
     return pipelines
+
+
+# ============================================================
+# Multi-metric scoring functions
+# ============================================================
+
+def compute_composite_score(cer, wer, runtime, 
+                            cer_weight=0.5, 
+                            wer_weight=0.3, 
+                            runtime_weight=0.2,
+                            runtime_baseline=0.1):
+    """
+    Compute a weighted composite score combining accuracy and speed.
+    
+    Args:
+        cer: Character Error Rate (0-1, lower is better)
+        wer: Word Error Rate (0-1, lower is better)
+        runtime: Processing time per image in seconds
+        cer_weight: Weight for CER (default: 0.5)
+        wer_weight: Weight for WER (default: 0.3)
+        runtime_weight: Weight for runtime (default: 0.2)
+        runtime_baseline: Baseline runtime for normalization (default: 0.1s)
+    
+    Returns:
+        Composite score (lower is better)
+    """
+    # Normalize runtime to 0-1 scale (assuming baseline to 2s range)
+    normalized_runtime = min(runtime / 2.0, 1.0)
+    
+    score = (cer_weight * cer + 
+             wer_weight * wer + 
+             runtime_weight * normalized_runtime)
+    
+    return score
+
+
+def is_pareto_optimal(pipeline, all_pipelines, metrics=['CER', 'WER', 'Runtime']):
+    """
+    Check if a pipeline is Pareto optimal (not dominated by any other pipeline).
+    
+    A pipeline is Pareto optimal if there's no other pipeline that's better
+    in at least one metric and not worse in any metric.
+    
+    Args:
+        pipeline: Pipeline to check
+        all_pipelines: List of all pipelines
+        metrics: List of metrics to consider
+    
+    Returns:
+        True if pipeline is Pareto optimal
+    """
+    for other in all_pipelines:
+        if other['pipeline'] == pipeline['pipeline']:
+            continue
+        
+        # Check if 'other' dominates 'pipeline'
+        better_in_some = False
+        worse_in_any = False
+        
+        for metric in metrics:
+            if metric == 'Runtime':
+                # For runtime, lower is better
+                if other[metric] < pipeline[metric]:
+                    better_in_some = True
+                elif other[metric] > pipeline[metric]:
+                    worse_in_any = True
+            else:
+                # For CER/WER, lower is better
+                if other[metric] < pipeline[metric]:
+                    better_in_some = True
+                elif other[metric] > pipeline[metric]:
+                    worse_in_any = True
+        
+        # If 'other' is better in some metric and not worse in any, 'pipeline' is dominated
+        if better_in_some and not worse_in_any:
+            return False
+    
+    return True
 
 
 # ============================================================
@@ -275,21 +366,46 @@ def process_image(args):
 
 
 # ============================================================
+# Print results by ranking
+# ============================================================
+
+def print_ranking(results, title, top_n=10):
+    """Print top N pipelines for a given ranking"""
+    print(f"\n{'='*60}")
+    print(f"{title}")
+    print(f"{'='*60}\n")
+    
+    for i, r in enumerate(results[:top_n], 1):
+        print(f"{i}. {r['pipeline']}")
+        print(f"   Steps: {r['steps']}")
+        print(f"   CER: {r['CER']:.4f} | WER: {r['WER']:.4f} | Runtime: {r['Runtime']:.3f}s", end="")
+        if 'CompositeScore' in r:
+            print(f" | Score: {r['CompositeScore']:.4f}", end="")
+        if r.get('Pareto', False):
+            print(f" |PARETO", end="")
+        print("\n")
+
+
+# ============================================================
 # Main evaluation
 # ============================================================
 
-def evaluate(folder_path, min_steps=1, max_steps=5, max_pipelines=None, 
-             use_order=True, num_workers=6):
+def evaluate(folder_path, min_steps=1, max_steps=4, max_pipelines=None, 
+             use_order=True, num_workers=6,
+             cer_weight=0.5, wer_weight=0.3, runtime_weight=0.2):
     """
     Evaluate multiple pipeline configurations
     
     Args:
         folder_path: Path to dataset folder
         min_steps: Minimum number of preprocessing steps (default: 1)
-        max_steps: Maximum number of preprocessing steps (default: 5)
+        max_steps: Maximum number of preprocessing steps (default: 4)
         max_pipelines: Maximum number of pipelines to test (default: None)
         use_order: Whether step order matters - uses permutations if True (default: True)
         num_workers: Number of parallel workers (default: 6)
+        cer_weight: Weight for CER in composite score (default: 0.5)
+        wer_weight: Weight for WER in composite score (default: 0.3)
+        runtime_weight: Weight for runtime in composite score (default: 0.2)
     """
 
     pipeline_configs = generate_pipelines(
@@ -326,14 +442,14 @@ def evaluate(folder_path, min_steps=1, max_steps=5, max_pipelines=None,
 
         dataset.append((image_path, gt))
 
-    print(f"\nValid images: {len(dataset)}")
+    print(f"\n✓ Valid images: {len(dataset)}")
     
     # Estimate time
     estimated_time_minutes = len(pipeline_configs) * len(dataset) * 0.5 / num_workers / 60
     if estimated_time_minutes < 60:
-        print(f"Estimated total time: ~{estimated_time_minutes:.1f} minutes")
+        print(f"✓ Estimated total time: ~{estimated_time_minutes:.1f} minutes")
     else:
-        print(f"Estimated total time: ~{estimated_time_minutes/60:.1f} hours")
+        print(f"✓ Estimated total time: ~{estimated_time_minutes/60:.1f} hours")
     
     print(f"\n{'='*60}\n")
 
@@ -405,54 +521,76 @@ def evaluate(folder_path, min_steps=1, max_steps=5, max_pipelines=None,
         cer = char_dist / max(char_total, 1)
         wer = wer_total / max(len(dataset), 1)
         runtime = runtime_total / max(len(dataset), 1)
+        
+        # Compute composite score
+        composite_score = compute_composite_score(
+            cer, wer, runtime,
+            cer_weight, wer_weight, runtime_weight
+        )
 
         results_table.append({
             "pipeline": name,
             "steps": " → ".join(config["preprocessing_steps"]),
             "CER": cer,
             "WER": wer,
-            "Runtime": runtime
+            "Runtime": runtime,
+            "CompositeScore": composite_score
         })
 
         # Show current results
-        print(f"  CER: {cer:.4f} | WER: {wer:.4f} | Runtime: {runtime:.3f}s")
+        print(f"  CER: {cer:.4f} | WER: {wer:.4f} | Runtime: {runtime:.3f}s | Score: {composite_score:.4f}")
         
-        # Show current best
-        current_best = min(results_table, key=lambda x: x["CER"])
-        if current_best["pipeline"] == name:
-            print(f"NEW BEST! (CER: {cer:.4f})")
+        # Show current best by different metrics
+        current_best_cer = min(results_table, key=lambda x: x["CER"])
+        current_best_score = min(results_table, key=lambda x: x["CompositeScore"])
+        
+        if current_best_cer["pipeline"] == name:
+            print(f"NEW BEST CER!")
+        if current_best_score["pipeline"] == name:
+            print(f"NEW BEST COMPOSITE SCORE!")
 
     total_time = time.time() - total_start
 
-    # Sort by CER (best first)
-    results_table = sorted(results_table, key=lambda x: x["CER"])
+    # ============================================================
+    # Multi-metric analysis
+    # ============================================================
+    
+    # Identify Pareto optimal pipelines
+    for r in results_table:
+        r['Pareto'] = is_pareto_optimal(r, results_table)
+    
+    # Different rankings
+    by_cer = sorted(results_table, key=lambda x: x["CER"])
+    by_wer = sorted(results_table, key=lambda x: x["WER"])
+    by_runtime = sorted(results_table, key=lambda x: x["Runtime"])
+    by_score = sorted(results_table, key=lambda x: x["CompositeScore"])
+    pareto_optimal = [r for r in results_table if r['Pareto']]
+    pareto_optimal = sorted(pareto_optimal, key=lambda x: x["CompositeScore"])
 
-    print(f"\n{'='*60}")
-    print(f"EVALUATION COMPLETE")
-    print(f"{'='*60}")
-    print(f"\nTop 10 Pipelines by CER:\n")
+    # Print all rankings
+    print_ranking(by_cer, "TOP 10 BY CER (Character Error Rate)")
+    print_ranking(by_wer, "TOP 10 BY WER (Word Error Rate)")
+    print_ranking(by_runtime, "TOP 10 BY RUNTIME (Fastest)")
+    print_ranking(by_score, f"TOP 10 BY COMPOSITE SCORE (Weights: CER={cer_weight}, WER={wer_weight}, Runtime={runtime_weight})")
+    
+    if pareto_optimal:
+        print_ranking(pareto_optimal, "PARETO OPTIMAL PIPELINES (Best Trade-offs)", top_n=len(pareto_optimal))
 
-    for i, r in enumerate(results_table[:10], 1):
-        print(f"{i}. {r['pipeline']}")
-        print(f"   Steps: {r['steps']}")
-        print(f"   CER: {r['CER']:.4f} | WER: {r['WER']:.4f} | Runtime: {r['Runtime']:.3f}s")
-        print()
-
-    # Save detailed results
+    # Save detailed results with all metrics
     output_file = "pipeline_parallel_results.csv"
     with open(output_file, "w", newline="", encoding="utf-8") as f:
 
         writer = csv.DictWriter(
             f,
-            fieldnames=["pipeline", "steps", "CER", "WER", "Runtime"]
+            fieldnames=["pipeline", "steps", "CER", "WER", "Runtime", "CompositeScore", "Pareto"]
         )
 
         writer.writeheader()
 
-        for r in results_table:
+        for r in by_score:  # Save sorted by composite score
             writer.writerow(r)
 
-    # Save summary
+    # Save comprehensive summary
     summary_file = "pipeline_summary.txt"
     with open(summary_file, "w", encoding="utf-8") as f:
         f.write("="*60 + "\n")
@@ -461,21 +599,41 @@ def evaluate(folder_path, min_steps=1, max_steps=5, max_pipelines=None,
         f.write(f"Dataset: {folder_path}\n")
         f.write(f"Images evaluated: {len(dataset)}\n")
         f.write(f"Pipelines tested: {len(pipeline_configs)}\n")
-        f.write(f"Total time: {total_time / 60:.2f} minutes\n\n")
-        f.write("="*60 + "\n")
-        f.write("TOP 10 PIPELINES\n")
-        f.write("="*60 + "\n\n")
+        f.write(f"Total time: {total_time / 60:.2f} minutes\n")
+        f.write(f"Composite score weights: CER={cer_weight}, WER={wer_weight}, Runtime={runtime_weight}\n\n")
         
-        for i, r in enumerate(results_table[:10], 1):
+        f.write("="*60 + "\n")
+        f.write("TOP 10 BY CER\n")
+        f.write("="*60 + "\n\n")
+        for i, r in enumerate(by_cer[:10], 1):
             f.write(f"{i}. {r['pipeline']}\n")
             f.write(f"   Steps: {r['steps']}\n")
             f.write(f"   CER: {r['CER']:.4f} | WER: {r['WER']:.4f} | Runtime: {r['Runtime']:.3f}s\n\n")
+        
+        f.write("="*60 + "\n")
+        f.write("TOP 10 BY COMPOSITE SCORE\n")
+        f.write("="*60 + "\n\n")
+        for i, r in enumerate(by_score[:10], 1):
+            f.write(f"{i}. {r['pipeline']}\n")
+            f.write(f"   Steps: {r['steps']}\n")
+            f.write(f"   CER: {r['CER']:.4f} | WER: {r['WER']:.4f} | Runtime: {r['Runtime']:.3f}s | Score: {r['CompositeScore']:.4f}\n\n")
+        
+        if pareto_optimal:
+            f.write("="*60 + "\n")
+            f.write("PARETO OPTIMAL PIPELINES\n")
+            f.write("="*60 + "\n\n")
+            for i, r in enumerate(pareto_optimal, 1):
+                f.write(f"{i}. {r['pipeline']}\n")
+                f.write(f"   Steps: {r['steps']}\n")
+                f.write(f"   CER: {r['CER']:.4f} | WER: {r['WER']:.4f} | Runtime: {r['Runtime']:.3f}s | Score: {r['CompositeScore']:.4f}\n\n")
 
+    print(f"\n{'='*60}")
     print(f"✓ Results saved to {output_file}")
     print(f"✓ Summary saved to {summary_file}")
     print(f"✓ Total evaluation time: {total_time / 60:.2f} minutes ({total_time:.1f} seconds)")
     print(f"✓ Evaluated {len(pipeline_configs)} pipelines on {len(dataset)} images")
-    print(f"\n{'='*60}\n")
+    print(f"✓ Found {len(pareto_optimal)} Pareto optimal pipelines")
+    print(f"{'='*60}\n")
 
 
 # ============================================================
@@ -491,20 +649,19 @@ if __name__ == "__main__":
     DATA_PATH = "data/SROIE2019/Stage1train"
     
     # Pipeline generation settings
+    # Your pipeline has 6 optional steps, so max_steps=4 is reasonable
     MIN_STEPS = 2        # Minimum preprocessing steps (excluding base grayscale)
-    MAX_STEPS = 5        # Maximum preprocessing steps (recommended: 4-5)
-    MAX_PIPELINES = 500  # Maximum total pipelines (safety cap, use None for unlimited)
+    MAX_STEPS = 4        # Maximum preprocessing steps (recommended: 4 for 6 available steps)
+    MAX_PIPELINES = 300  # Maximum total pipelines (safety cap, use None for unlimited)
     USE_ORDER = True     # True = order matters (permutations), False = combinations only
     
     # Execution settings
     NUM_WORKERS = 6      # Parallel workers (adjust based on CPU cores)
     
-    # ============================================================
-    # Expected results with these settings:
-    # - max_steps=5 with filtering: ~400-600 valid pipelines
-    # - Evaluation time: 2-3 hours (depending on hardware)
-    # - Should find optimal 4-5 step pipelines
-    # ============================================================
+    # Multi-metric scoring weights (must sum to 1.0)
+    CER_WEIGHT = 0.5       # Weight for Character Error Rate
+    WER_WEIGHT = 0.3       # Weight for Word Error Rate
+    RUNTIME_WEIGHT = 0.2   # Weight for processing speed
     
     evaluate(
         folder_path=DATA_PATH,
@@ -512,5 +669,8 @@ if __name__ == "__main__":
         max_steps=MAX_STEPS,
         max_pipelines=MAX_PIPELINES,
         use_order=USE_ORDER,
-        num_workers=NUM_WORKERS
+        num_workers=NUM_WORKERS,
+        cer_weight=CER_WEIGHT,
+        wer_weight=WER_WEIGHT,
+        runtime_weight=RUNTIME_WEIGHT
     )
