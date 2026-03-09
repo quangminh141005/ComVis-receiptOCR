@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from check_blue_ink import _is_blue_ink
+from .check_blue_ink import is_blue_ink
 
 def convert_to_grayscale(img: np.ndarray) -> np.ndarray:
     """
@@ -21,7 +21,7 @@ def convert_to_grayscale(img: np.ndarray) -> np.ndarray:
     if len(img.shape) == 2:
         return img                          # already grayscale
 
-    if _is_blue_ink(img):
+    if is_blue_ink(img):
         print("    [grayscale] blue-ink receipt detected -- using R+G blend")
         b, g, r = cv2.split(img)
         return cv2.addWeighted(r, 0.5, g, 0.5, 0)
