@@ -7,16 +7,23 @@ from tqdm import tqdm
 from src.pipeline import ReceiptOCRPipeline
 
 
+# ============================================================
+# Ground truth loader
+# ============================================================
+
 def load_ground_truth(gt_path: str):
+
     lines = []
 
     try:
         with open(gt_path, encoding="utf-8") as f:
             reader = csv.reader(f)
+
             for row in reader:
                 if len(row) >= 9:
                     text = ",".join(row[8:])
                     lines.append(text.strip())
+
     except Exception as e:
         print(f"Error reading {gt_path}: {e}")
         return ""
@@ -24,7 +31,12 @@ def load_ground_truth(gt_path: str):
     return "\n".join(lines)
 
 
+# ============================================================
+# Text normalization
+# ============================================================
+
 def normalize(text: str):
+
     if text is None:
         return ""
 
@@ -35,61 +47,112 @@ def normalize(text: str):
     return text
 
 
-def evaluate_compare(folder_path: str):
+# ============================================================
+# Word Error Rate
+# ============================================================
+
+def compute_wer(pred: str, gt: str):
+
+    pred_words = pred.split()
+    gt_words = gt.split()
+
+    dist = editdistance.eval(pred_words, gt_words)
+
+    return dist / max(len(gt_words), 1)
+
+
+# ============================================================
+# Evaluation
+# ============================================================
+
+def evaluate_pipelines(folder_path: str):
 
     if not os.path.exists(folder_path):
         raise ValueError(f"Folder not found: {folder_path}")
 
-    # -------------------------
-    # Pipeline configurations
-    # -------------------------
+    # ============================================================
+    # Define pipelines here
+    # ============================================================
 
-    no_pre_config = {
-        "preprocessing_steps": [],
-        "ocr_config": {"lang": "eng", "psm": 6}
+    pipeline_configs = {
+
+        "no_preprocessing": {
+            "preprocessing_steps": [],
+            "ocr_config": {"lang": "eng", "psm": 6}
+        },
+
+        "bilateral_pipeline": {
+            "preprocessing_steps": [
+                "grayscale",
+                "denoise_bilateral",
+                "adaptive_threshold",
+                "morphology"
+            ],
+            "ocr_config": {"lang": "eng", "psm": 6}
+        },
+
+        "nlm_pipeline": {
+            "preprocessing_steps": [
+                "grayscale",
+                "denoise_nlm",
+                "adaptive_threshold",
+                "morphology"
+            ],
+            "ocr_config": {"lang": "eng", "psm": 6}
+        },
+
+        "clahe_pipeline": {
+            "preprocessing_steps": [
+                "grayscale",
+                "denoise_bilateral",
+                "contrast",
+                "adaptive_threshold",
+                "morphology"
+            ],
+            "ocr_config": {"lang": "eng", "psm": 6}
+        }
     }
 
-    pre_config = {
-        "preprocessing_steps": [
-            "resolution",
-            "grayscale",
-            "denoise",
-            "contrast",
-            "adaptive_threshold",
-            "flip",
-            "morphology",
-            "flip"
-        ],
-        "ocr_config": {"lang": "eng", "psm": 6}
+    # ============================================================
+    # Initialize pipelines
+    # ============================================================
+
+    pipelines = {
+        name: ReceiptOCRPipeline(cfg)
+        for name, cfg in pipeline_configs.items()
     }
 
-    pipeline_no_pre = ReceiptOCRPipeline(no_pre_config)
-    pipeline_pre = ReceiptOCRPipeline(pre_config)
+    # ============================================================
+    # Metrics storage
+    # ============================================================
+
+    stats = {}
+
+    for name in pipelines:
+
+        stats[name] = {
+            "char_distance": 0,
+            "char_total": 0,
+            "wer_total": 0,
+            "exact_match": 0,
+            "runtime": 0,
+            "images": 0
+        }
+
+    improved = 0
+    worse = 0
+    same = 0
 
     image_files = sorted([
         f for f in os.listdir(folder_path)
         if f.lower().endswith((".jpg", ".jpeg", ".png"))
     ])
 
-    # -------------------------
-    # Metrics storage
-    # -------------------------
+    start_total = time.time()
 
-    total_distance_no = 0
-    total_chars_no = 0
-
-    total_distance_pre = 0
-    total_chars_pre = 0
-
-    improved = 0
-    worse = 0
-    same = 0
-
-    start_time_no = time.time()
-
-    # -------------------------
+    # ============================================================
     # Evaluation loop
-    # -------------------------
+    # ============================================================
 
     for file in tqdm(image_files, desc="Evaluating", unit="img"):
 
@@ -100,85 +163,139 @@ def evaluate_compare(folder_path: str):
         if not os.path.exists(gt_path):
             continue
 
-        gt = load_ground_truth(gt_path)
-        gt = normalize(gt)
+        gt = normalize(load_ground_truth(gt_path))
 
         if len(gt) == 0:
             continue
 
-        # -------- NO PREPROCESS --------
+        pipeline_cers = {}
 
-        try:
-            pred_no = pipeline_no_pre.process_image(image_path)
-        except:
-            pred_no = ""
+        for name, pipeline in pipelines.items():
 
-        pred_no = normalize(pred_no)
+            start = time.time()
 
-        dist_no = editdistance.eval(pred_no, gt)
-        cer_no = dist_no / len(gt)
+            try:
+                pred = pipeline.process_image(image_path)
+            except:
+                pred = ""
 
-        total_distance_no += dist_no
-        total_chars_no += len(gt)
+            runtime = time.time() - start
 
-        # -------- WITH PREPROCESS --------
+            pred = normalize(pred)
 
-        try:
-            pred_pre = pipeline_pre.process_image(image_path)
-        except:
-            pred_pre = ""
+            dist = editdistance.eval(pred, gt)
+            cer = dist / len(gt)
+            wer = compute_wer(pred, gt)
 
-        pred_pre = normalize(pred_pre)
+            stats[name]["char_distance"] += dist
+            stats[name]["char_total"] += len(gt)
+            stats[name]["wer_total"] += wer
+            stats[name]["runtime"] += runtime
+            stats[name]["images"] += 1
 
-        dist_pre = editdistance.eval(pred_pre, gt)
-        cer_pre = dist_pre / len(gt)
+            if pred == gt:
+                stats[name]["exact_match"] += 1
 
-        total_distance_pre += dist_pre
-        total_chars_pre += len(gt)
+            pipeline_cers[name] = cer
 
-        # -------- compare improvement --------
+        # ----------------------------------------------------
+        # Improvement comparison (vs baseline)
+        # ----------------------------------------------------
 
-        if cer_pre < cer_no:
-            improved += 1
-        elif cer_pre > cer_no:
-            worse += 1
-        else:
-            same += 1
+        baseline = pipeline_cers.get("no_preprocessing")
 
-    total_time = time.time() - start_time_no
+        for name, cer in pipeline_cers.items():
 
-    cer_no = total_distance_no / total_chars_no
-    cer_pre = total_distance_pre / total_chars_pre
+            if name == "no_preprocessing":
+                continue
 
-    improvement = cer_no - cer_pre
+            if cer < baseline:
+                improved += 1
+            elif cer > baseline:
+                worse += 1
+            else:
+                same += 1
 
-    # -------------------------
-    # Results
-    # -------------------------
+    total_time = time.time() - start_total
 
-    print("\n" + "=" * 60)
-    print("OCR PREPROCESSING COMPARISON")
-    print("=" * 60)
+    # ============================================================
+    # Compute final metrics
+    # ============================================================
+
+    results = []
+
+    for name in pipelines:
+
+        s = stats[name]
+
+        cer = s["char_distance"] / max(s["char_total"], 1)
+        wer = s["wer_total"] / max(s["images"], 1)
+        exact = s["exact_match"] / max(s["images"], 1)
+        runtime = s["runtime"] / max(s["images"], 1)
+
+        results.append({
+            "pipeline": name,
+            "CER": cer,
+            "WER": wer,
+            "ExactMatch": exact,
+            "AvgRuntime": runtime
+        })
+
+    results = sorted(results, key=lambda x: x["CER"])
+
+    # ============================================================
+    # Print results
+    # ============================================================
+
+    print("\n" + "=" * 70)
+    print("OCR PIPELINE EVALUATION")
+    print("=" * 70)
 
     print(f"Total images: {len(image_files)}")
 
-    print("\nCER comparison")
-    print(f"No preprocessing CER : {cer_no:.4f}")
-    print(f"With preprocessing CER: {cer_pre:.4f}")
+    print("\nPipeline Results")
 
-    print(f"\nCER improvement: {improvement:.4f}")
+    for r in results:
 
-    print("\nImage level comparison")
+        print(f"\nPipeline: {r['pipeline']}")
+        print(f"  CER          : {r['CER']:.4f}")
+        print(f"  WER          : {r['WER']:.4f}")
+        print(f"  Exact Match  : {r['ExactMatch']:.4f}")
+        print(f"  Avg Runtime  : {r['AvgRuntime']:.4f}s")
+
+    print("\nImage level comparison (vs baseline)")
     print(f"Improved images : {improved}")
     print(f"Worse images    : {worse}")
     print(f"Same            : {same}")
 
-    print("\nSpeed")
-    print(f"Total time: {total_time:.2f}s")
-    print(f"Avg time per image (2 pipelines): {total_time / len(image_files):.4f}s")
+    print("\nTotal evaluation time:", f"{total_time:.2f}s")
 
-    print("=" * 60)
+    print("=" * 70)
 
+    # ============================================================
+    # Save results to CSV
+    # ============================================================
+
+    output_file = "pipeline_results.csv"
+
+    with open(output_file, "w", newline="") as f:
+
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["pipeline", "CER", "WER", "ExactMatch", "AvgRuntime"]
+        )
+
+        writer.writeheader()
+
+        for r in results:
+            writer.writerow(r)
+
+    print(f"\nResults saved to: {output_file}")
+
+
+# ============================================================
+# Main
+# ============================================================
 
 if __name__ == "__main__":
-    evaluate_compare("data/SROIE2019/task1train")
+    evaluate_pipelines("data/SROIE2019/Stage1train")
