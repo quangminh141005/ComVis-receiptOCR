@@ -1,5 +1,7 @@
 data/SROIE2019/*
 !data/SROIE2019/.gitkeep
 
+visualize/
+
 #python
 __pycache__/
