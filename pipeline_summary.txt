@@ -1,0 +1,126 @@
+============================================================
+PIPELINE EVALUATION SUMMARY
+============================================================
+
+Dataset: data/SROIE2019/Stage1train
+Images evaluated: 704
+Pipelines tested: 24
+Total time: 93.41 minutes
+Composite score weights: CER=0.5, WER=0.3, Runtime=0.2
+
+============================================================
+TOP 10 BY CER
+============================================================
+
+1. pipe_3
+   Steps: grayscale → denoise_nlm → contrast
+   CER: 0.2013 | WER: 0.4558 | Runtime: 2.082s
+
+2. pipe_15
+   Steps: grayscale → denoise_nlm → contrast → otsu_threshold
+   CER: 0.2195 | WER: 0.5033 | Runtime: 2.019s
+
+3. pipe_23
+   Steps: grayscale → denoise_nlm → contrast → otsu_threshold → morphology
+   CER: 0.2195 | WER: 0.5033 | Runtime: 2.035s
+
+4. pipe_4
+   Steps: grayscale → denoise_nlm → adaptive_threshold
+   CER: 0.2312 | WER: 0.5371 | Runtime: 1.966s
+
+5. pipe_16
+   Steps: grayscale → denoise_nlm → adaptive_threshold → morphology
+   CER: 0.2312 | WER: 0.5371 | Runtime: 2.123s
+
+6. pipe_0
+   Steps: grayscale → denoise_bilateral → contrast
+   CER: 0.2314 | WER: 0.4997 | Runtime: 0.973s
+
+7. pipe_7
+   Steps: grayscale → contrast → otsu_threshold
+   CER: 0.2383 | WER: 0.5404 | Runtime: 0.808s
+
+8. pipe_19
+   Steps: grayscale → contrast → otsu_threshold → morphology
+   CER: 0.2383 | WER: 0.5404 | Runtime: 0.889s
+
+9. pipe_5
+   Steps: grayscale → denoise_nlm → otsu_threshold
+   CER: 0.2389 | WER: 0.5313 | Runtime: 1.907s
+
+10. pipe_17
+   Steps: grayscale → denoise_nlm → otsu_threshold → morphology
+   CER: 0.2389 | WER: 0.5313 | Runtime: 2.026s
+
+============================================================
+TOP 10 BY COMPOSITE SCORE
+============================================================
+
+1. pipe_9
+   Steps: grayscale → otsu_threshold → morphology
+   CER: 0.2421 | WER: 0.5380 | Runtime: 0.790s | Score: 0.3615
+
+2. pipe_7
+   Steps: grayscale → contrast → otsu_threshold
+   CER: 0.2383 | WER: 0.5404 | Runtime: 0.808s | Score: 0.3620
+
+3. pipe_0
+   Steps: grayscale → denoise_bilateral → contrast
+   CER: 0.2314 | WER: 0.4997 | Runtime: 0.973s | Score: 0.3629
+
+4. pipe_19
+   Steps: grayscale → contrast → otsu_threshold → morphology
+   CER: 0.2383 | WER: 0.5404 | Runtime: 0.889s | Score: 0.3701
+
+5. pipe_12
+   Steps: grayscale → denoise_bilateral → adaptive_threshold → morphology
+   CER: 0.2470 | WER: 0.5590 | Runtime: 0.827s | Score: 0.3739
+
+6. pipe_1
+   Steps: grayscale → denoise_bilateral → adaptive_threshold
+   CER: 0.2470 | WER: 0.5590 | Runtime: 0.890s | Score: 0.3802
+
+7. pipe_11
+   Steps: grayscale → denoise_bilateral → contrast → otsu_threshold
+   CER: 0.2836 | WER: 0.6145 | Runtime: 0.828s | Score: 0.4089
+
+8. pipe_21
+   Steps: grayscale → denoise_bilateral → contrast → otsu_threshold → morphology
+   CER: 0.2836 | WER: 0.6145 | Runtime: 0.862s | Score: 0.4124
+
+9. pipe_2
+   Steps: grayscale → denoise_bilateral → otsu_threshold
+   CER: 0.2994 | WER: 0.6170 | Runtime: 0.790s | Score: 0.4138
+
+10. pipe_13
+   Steps: grayscale → denoise_bilateral → otsu_threshold → morphology
+   CER: 0.2994 | WER: 0.6170 | Runtime: 0.818s | Score: 0.4166
+
+============================================================
+PARETO OPTIMAL PIPELINES
+============================================================
+
+1. pipe_9
+   Steps: grayscale → otsu_threshold → morphology
+   CER: 0.2421 | WER: 0.5380 | Runtime: 0.790s | Score: 0.3615
+
+2. pipe_7
+   Steps: grayscale → contrast → otsu_threshold
+   CER: 0.2383 | WER: 0.5404 | Runtime: 0.808s | Score: 0.3620
+
+3. pipe_0
+   Steps: grayscale → denoise_bilateral → contrast
+   CER: 0.2314 | WER: 0.4997 | Runtime: 0.973s | Score: 0.3629
+
+4. pipe_3
+   Steps: grayscale → denoise_nlm → contrast
+   CER: 0.2013 | WER: 0.4558 | Runtime: 2.082s | Score: 0.4374
+
+5. pipe_15
+   Steps: grayscale → denoise_nlm → contrast → otsu_threshold
+   CER: 0.2195 | WER: 0.5033 | Runtime: 2.019s | Score: 0.4608
+
+6. pipe_4
+   Steps: grayscale → denoise_nlm → adaptive_threshold
+   CER: 0.2312 | WER: 0.5371 | Runtime: 1.966s | Score: 0.4733
+
